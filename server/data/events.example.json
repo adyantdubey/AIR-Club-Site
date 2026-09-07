@@ -1,0 +1,7 @@
+{
+  "_note": "Rename this file to events.json to override the events list on the website without rebuilding.",
+  "events": [
+    { "date": "2026-09-20T10:00:00+05:30", "title": "Rover Build Weekend", "where": "Robotics Lab, NIT AP", "kind": "WORKSHOP" },
+    { "date": "2026-10-04T17:00:00+05:30", "title": "Intro to ROS 2", "where": "Seminar Hall B", "kind": "TALK" }
+  ]
+}

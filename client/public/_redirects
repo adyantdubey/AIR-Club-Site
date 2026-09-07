@@ -1,0 +1,3 @@
+# Single-page app: every URL must serve index.html so /robotics/arm etc. work on a
+# hard refresh. Used by Netlify and Cloudflare Pages (they read this file automatically).
+/*  /index.html  200

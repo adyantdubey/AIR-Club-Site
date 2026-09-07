@@ -1,0 +1,17 @@
+/* The only place colours, fonts and sizes are defined. Components use these variables. */
+:root {
+  --bg: #050810;
+  --bg-2: #0b1020;
+  --fg: #f5f7ff;
+  --muted: #8a93b2;
+  --blue: #2d7bff;
+  --blue-glow: #6eb2ff;
+  --line: rgba(110, 178, 255, 0.18);
+
+  --font-display: 'Space Grotesk', system-ui, sans-serif;
+  --font-body: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  --pad-x: clamp(1.25rem, 5vw, 6rem);
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+}
