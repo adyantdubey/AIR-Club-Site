@@ -6,13 +6,8 @@ import { splitText } from '../../lib/split';
 import { roverStore } from '../../lib/roverStore';
 import { useInView } from '../../hooks/useInView';
 import SectionHeading from '../ui/SectionHeading';
+import { useContent } from '../../lib/content';
 
-const STORY = [
-  { year: '2019', title: 'Founded', text: 'A handful of ECE students and one soldering iron in a borrowed lab.' },
-  { year: '2021', title: 'First autonomous bot', text: 'Line-follower that placed at the state-level tech fest.' },
-  { year: '2024', title: 'Vision & FPGA tracks', text: 'Computer-vision and neuromorphic-hardware teams formed.' },
-  { year: '2027', title: 'International Rover Challenge', text: 'Full six-wheel rover with GPS-denied autonomy heading to IRC.' },
-];
 
 const PILLARS = [
   {
@@ -35,6 +30,8 @@ const PILLARS = [
 export default function About() {
   const root = useRef(null);
   const para = useRef(null);
+  const about = useContent('about');
+  const STORY = useContent('history'); // club timeline, edited in Admin → Page content
   const timeline = useRef(null);
   const pillars = useRef(null);
   const timelineIn = useInView(timeline, 0.25);
@@ -113,9 +110,7 @@ export default function About() {
 
       <div className="grid gap-16 lg:grid-cols-2">
         <p ref={para} className="display max-w-[560px] text-[clamp(1.35rem,2.4vw,2rem)] font-medium leading-[1.35]">
-          We are the AI & Robotics Club of NIT Andhra Pradesh. We build machines that see, think and move —
-          autonomous rovers, camera-based medical devices and brain-inspired chips. Every member touches
-          hardware and code, and every project ends on a competition floor or in someone's hands.
+          {about.lead}
         </p>
 
         <div ref={timeline} className="relative pl-10">
@@ -123,8 +118,8 @@ export default function About() {
             <line className="tl-line" x1="1" y1="0" x2="1" y2="100" stroke="var(--blue)" strokeWidth="2" vectorEffect="non-scaling-stroke" />
           </svg>
           <div className="flex flex-col gap-8">
-            {STORY.map((s) => (
-              <div key={s.year} className="milestone relative">
+            {STORY.map((s, i) => (
+              <div key={i} className="milestone relative">
                 <span className="dot absolute -left-[2.05rem] top-6 h-3 w-3 rounded-full ring-4" style={{ background: 'var(--blue)', '--tw-ring-color': 'rgba(45,123,255,0.25)' }} />
                 <div className="card p-5">
                 <div className="mono text-xs tracking-[0.2em]" style={{ color: 'var(--blue-glow)' }}>{s.year}</div>

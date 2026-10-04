@@ -1,9 +1,27 @@
 # AI & Robotics Club — NIT Andhra Pradesh · Website
 
 Multi-page club site: 8 code-built, rotatable 3D machines, 8 interactive AI labs (real maths in the browser),
-GSAP scroll animations and anime.js details. Frontend: React + Vite + React Router. Backend: Node + Express (no database).
+GSAP scroll animations and anime.js details — plus a club platform: projects list, gallery, Idea Box,
+announcements, staff log-in and an admin dashboard.
+Frontend: React + Vite + React Router. Backend: Node + Express (forms/email) + Supabase (database + log-ins).
 
-Pages: `/` · `/robotics` · `/robotics/<machine>` · `/ai` · `/ai/<lab>` · `/about` · `/events` · `/team` · `/contact`
+Public pages: `/` · `/robotics` · `/robotics/<machine>` · `/ai` · `/ai/<lab>` · `/projects` · `/events` ·
+`/ideas` · `/announcements` · `/gallery` · `/learn` · `/about` · `/team` · `/contact` · `/login`,
+plus a story page for each earlier project (`/projects/<name>`) and each event (`/events/<id>`)
+
+Admin pages (log-in needed): `/admin` (dashboard) · `/admin/projects` · `/admin/events` ·
+`/admin/announcements` · `/admin/ideas` · `/admin/achievements` · `/admin/gallery` · `/admin/team` ·
+`/admin/content` (page text: headline, counters, About, values, history, lab tour, week, sponsors, FAQ, Techkriya) ·
+`/admin/learn` (Learn videos) · `/admin/settings`
+
+## Demo mode vs real database
+
+Out of the box the site runs in **demo mode** — no setup needed. It uses the sample data in
+`client/src/data/seed.js`, saves your admin changes in your own browser only, and the `/login`
+page lists six demo accounts (one per role, password `demo1234`).
+
+To make it real and shared, follow **`SUPABASE_SETUP.md`** (about 10 minutes, free): create a
+Supabase project, run `supabase/database_schema.sql` then `supabase/seed_content.sql`, paste two keys into `client/.env`.
 
 ## Run it (first time)
 
@@ -22,28 +40,23 @@ npm run dev:server     # → http://localhost:4000  (API)
 npm run dev:client     # → http://localhost:5173  (website)
 ```
 
-Open http://localhost:5173.
+Open http://localhost:5173. Admin: http://localhost:5173/login → pick a demo account.
 
 While `SEND_EMAILS=false` in `server/.env`, form submissions are printed in the server terminal
 and saved to `server/data/signups.jsonl` instead of being emailed.
 
 ## Hosting it free (no server)
 
-Almost the whole site is static files — the Node server exists **only** to receive the two
-forms (Join and Event registration) and email/save them. Point the forms at a free form
-service instead and you need no server at all.
+**Recommended: Supabase + Cloudflare Pages — both free. Full step-by-step in `HOSTING.md`.**
 
-**Recommended: Cloudflare Pages + Web3Forms — free, fast in India, nothing to maintain.**
+Short version: run the two SQL files in Supabase, push this folder to GitHub, then in
+Cloudflare → **Workers & Pages → Create application → Pages → Connect to Git** set
+root directory `client`, build command `npm run build`, output `dist`, and add the
+`VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` variables.
 
-1. Get a form key at https://web3forms.com (paste your club email, it mails you a key).
-2. `copy client\.env.example client\.env` and uncomment the three `endpoint` lines,
-   pasting your key into `VITE_FORM_ACCESS_KEY`.
-3. Push this folder to GitHub.
-4. Cloudflare dashboard → **Workers & Pages → Create → Pages → Connect to Git**, then set:
-   - Build command: `npm install && npm run build`
-   - Build output directory: `client/dist`
-   - Root directory: leave blank
-5. Deploy. You get `your-club.pages.dev` free, and form submissions arrive by email.
+Once Supabase is connected the two forms (Join, Event registration) save straight to the
+database and show up in the admin area, so the Node server is not needed. To also get each
+form by email, use a free form service — see Option A in `client/.env.example`.
 
 `client/public/_redirects` is already in place so deep links like `/robotics/arm` survive a
 refresh. **Netlify** works identically with the same settings (and you can use
@@ -75,18 +88,32 @@ Deploy the whole folder to Render / Railway / a VPS. Set the `.env` values there
 | A machine's text, specs, build log | `client/src/machines/<slug>/index.jsx` (bottom of the file) |
 | A lab's explain text / challenges | `client/src/labs/<slug>/index.jsx` (bottom of the file) |
 | Add a machine or lab | copy a folder, then add a line in `client/src/machines/index.js` / `client/src/labs/index.js` |
-| Events without rebuilding | rename `server/data/events.example.json` → `events.json` and edit |
 | Lab tour spots, achievements, week, sponsors | `client/src/pages/About.jsx` (arrays at the top of each section) |
-| Project cards | `client/src/data/projects.js` |
-| Team members + photos | `client/src/data/team.js` |
-| Events + countdown | `client/src/data/events.js` |
+| Projects, events, team, achievements, gallery, announcements, ideas | **Admin dashboard** (`/admin`) — no code needed |
+| Club email, office hours, mission/vision, social links | **Admin → Settings** |
+| Real club content from the previous website (about text, team, earlier projects, past events, FAQ, Learn videos) | `client/src/data/oldSite.js` |
+| Sample data used in demo mode | `client/src/data/seed.js` |
+| Who may edit what (roles) | `client/src/lib/roles.js` + `supabase/database_schema.sql` (the real lock) |
 | Colours / fonts | `client/src/styles/tokens.css` |
 | Headline, hero text | `client/src/components/sections/Hero.jsx` |
 | Club story timeline | `client/src/components/sections/About.jsx` |
 | Email address in footer/contact | `client/src/components/sections/Contact.jsx` |
 
+## How the new parts fit together
+
+| Piece | File |
+|---|---|
+| Reads/writes all data (Supabase or demo) | `client/src/lib/db.js` |
+| Log-in state + roles | `client/src/lib/auth.jsx`, `client/src/lib/roles.js` |
+| Database tables, security rules, audit log | `supabase/database_schema.sql` |
+| New public pages | `client/src/pages/Projects.jsx`, `Gallery.jsx`, `Ideas.jsx`, `Announcements.jsx`, `Login.jsx` |
+| New home-page sections | `client/src/components/sections/HomeExtras.jsx` |
+| Admin pages | `client/src/admin/*` |
+| Shared UI (badges, tables, forms, modal) | `client/src/components/ui/kit.jsx`, `DataTable.jsx` |
+
 ## Docs
 
+- `SUPABASE_SETUP.md` — connect the real database and make yourself super admin
 - `PLAN.md` (v1) and `PLAN_V2.md` — every animation, page by page
 - `REACT_SKILLS.md` — rules for writing new components
 - `client/src/machines/CONTRACT.md`, `client/src/labs/CONTRACT.md` — how to build a new machine / lab module
@@ -94,6 +121,8 @@ Deploy the whole folder to Render / Railway / a VPS. Set the `.env` values there
 
 ## Form data
 
+- Join requests and event registrations are also saved to the database — they show up in
+  **Admin → Dashboard** (join requests) and **Admin → Events** (registrations, with CSV download).
 - With the Node server: join requests → `server/data/signups.jsonl`, event registrations →
   `server/data/registrations.jsonl` (+ email when `SEND_EMAILS=true`).
 - Hosted free/static: submissions go to whichever service you set in `client/.env`

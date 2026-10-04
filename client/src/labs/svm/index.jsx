@@ -501,6 +501,10 @@ export default {
       text: 'C is how much the model hates mistakes: small C accepts a few wrong points for a wider margin, big C bends over backwards to get every training point right. Gamma (RBF only) is how local each point\'s influence is: small gamma gives smooth, broad hills; large gamma makes a tight bump around every single point — which is over-fitting.',
     },
     {
+      title: 'Where it is used',
+      text: 'A Support Vector Machine is a versatile model used for both classification and regression. Its strength is drawing decision boundaries that maximise accuracy, and by moving the points yourself you can see how it copes with very different datasets. The RBF (Radial Basis Function) kernel lifts the data into a higher-dimensional space using a Gaussian function, which is what lets it capture non-linear relationships. Fine-tuning C — the trade-off between a wide margin and few mistakes — is crucial for getting the best out of an SVM.',
+    },
+    {
       title: 'How it trains',
       text: 'Training uses SMO (Sequential Minimal Optimisation): it repeatedly picks two points that break the rules and solves for them exactly. It is slowed to about 120 passes a second so you can watch the surface settle into place.',
     },

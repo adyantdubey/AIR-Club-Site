@@ -5,17 +5,29 @@ import { gsap, ScrollTrigger } from '../../lib/gsap';
 import { TLink } from '../../transitions/PageWipe';
 import { MACHINES } from '../../machines';
 import { LABS } from '../../labs';
+import { useAuth } from '../../lib/auth';
 import Logo from './Logo';
 import FlipLink from './FlipLink';
 
 const LINKS = [
   { to: '/robotics', label: 'Robotics', mega: 'robotics' },
   { to: '/ai', label: 'AI Lab', mega: 'ai' },
-  { to: '/about', label: 'About' },
+  { to: '/projects', label: 'Projects' },
   { to: '/events', label: 'Events' },
-  { to: '/team', label: 'Team' },
-  { to: '/contact', label: 'Contact' },
+  { to: '/ideas', label: 'Idea Box' },
+  { to: '/about', label: 'More', mega: 'more' },
 ];
+
+// Pages under "More" (desktop) — all pages are listed flat in the mobile menu
+const MORE = [
+  { slug: 'about', name: 'About', tag: 'MISSION · FACULTY · LAB' },
+  { slug: 'team', name: 'Team', tag: 'THE COMMITTEE' },
+  { slug: 'announcements', name: 'Announcements', tag: 'NOTICES · DEADLINES' },
+  { slug: 'learn', name: 'Learn', tag: 'VIDEOS · COURSES' },
+  { slug: 'gallery', name: 'Gallery', tag: 'PHOTOS FROM THE FLOOR' },
+  { slug: 'contact', name: 'Contact', tag: 'JOIN THE CLUB' },
+];
+const MOBILE = [...LINKS.filter((l) => !l.mega || l.mega !== 'more'), ...MORE.map((m) => ({ to: `/${m.slug}`, label: m.name }))];
 
 // Tiny wireframe glyphs for the mega-menu (G10)
 const GLYPH = {
@@ -35,6 +47,12 @@ const GLYPH = {
   gradient: 'M3 16c4-8 6-8 9 0s5 8 9 0M12 8a1 1 0 1 0 2 0a1 1 0 1 0-2 0',
   distillation: 'M4 6h8v12H4zM16 9h4v6h-4zM12 12h4',
   reinforcement: 'M4 4h16v16H4zM4 12h16M12 4v16M8 16l4-4',
+  about: 'M12 3l8 4.5v9L12 21l-8-4.5v-9zM12 10v6M12 7v.5',
+  team: 'M9 10a3 3 0 1 0 0-6a3 3 0 1 0 0 6M3 20c.8-3.5 3.2-5 6-5s5.2 1.5 6 5M16 11a2.5 2.5 0 1 0 0-5M17 15c2 .4 3.4 1.9 4 5',
+  announcements: 'M4 10v4h3l6 4V6L7 10zM16 9a4 4 0 0 1 0 6M18.5 6.5a7.5 7.5 0 0 1 0 11',
+  gallery: 'M4 5h16v14H4zM4 15l4.5-4.5 4 4 3-3L20 16M15 9h.01',
+  contact: 'M4 6h16v12H4zM4 7l8 6 8-6',
+  learn: 'M4 6h16v11H4zM10 9.5l5 2-5 2zM8 20h8',
 };
 
 export default function Navbar() {
@@ -76,7 +94,11 @@ export default function Navbar() {
     closeTimer.current = setTimeout(() => setMega(null), 160);
   };
 
-  const active = (to) => location.pathname === to || (to !== '/' && location.pathname.startsWith(to + '/'));
+  const { user } = useAuth();
+  const active = (l) =>
+    l.mega === 'more'
+      ? MORE.some((m) => location.pathname === `/${m.slug}`)
+      : location.pathname === l.to || (l.to !== '/' && location.pathname.startsWith(l.to + '/'));
 
   return (
     <header ref={root} className="fixed left-0 top-0 z-[80] w-full border-b" style={{ padding: '22px var(--pad-x)', borderBottomColor: 'transparent' }}>
@@ -88,37 +110,60 @@ export default function Navbar() {
           </span>
         </TLink>
 
-        <div className="relative hidden items-center gap-8 md:flex" onMouseLeave={hideMega}>
+        <div className="relative hidden items-center gap-7 lg:flex" onMouseLeave={hideMega}>
           {LINKS.map((l) => (
             <div key={l.to} onMouseEnter={() => (l.mega ? showMega(l.mega) : setMega(null))} className="relative py-2">
-              <FlipLink to={l.to} as={TLink} className="mono text-xs uppercase tracking-[0.18em]">
-                {l.label}
-              </FlipLink>
+              {l.mega === 'more' ? (
+                <button className="mono flex items-center gap-1 text-xs uppercase tracking-[0.18em]" onClick={() => showMega('more')} aria-haspopup="true" aria-expanded={mega === 'more'}>
+                  {l.label} <span aria-hidden="true" style={{ color: 'var(--blue-glow)' }}>▾</span>
+                </button>
+              ) : (
+                <FlipLink to={l.to} as={TLink} className="mono text-xs uppercase tracking-[0.18em]">
+                  {l.label}
+                </FlipLink>
+              )}
               <span
                 className="absolute -bottom-1 left-0 h-px transition-all duration-300"
-                style={{ background: 'var(--blue)', width: active(l.to) ? '100%' : 0 }}
+                style={{ background: 'var(--blue)', width: active(l) ? '100%' : 0 }}
               />
             </div>
           ))}
           {mega && (
-            <div className="mega" onMouseEnter={() => showMega(mega)} onMouseLeave={hideMega}>
+            <div
+              className="mega"
+              style={mega === 'more' ? { width: 'min(620px, 92vw)', gridTemplateColumns: 'repeat(2, 1fr)', left: 'auto', right: 0, transform: 'none' } : undefined}
+              onMouseEnter={() => showMega(mega)}
+              onMouseLeave={hideMega}
+            >
               <MegaItems kind={mega} />
             </div>
           )}
         </div>
 
-        <button className="mono text-xs uppercase tracking-[0.18em] md:hidden" onClick={() => setOpen((v) => !v)} aria-expanded={open} aria-label="Menu">
-          {open ? 'Close' : 'Menu'}
-        </button>
+        <div className="flex items-center gap-4">
+          <TLink
+            to={user ? '/admin' : '/login'}
+            className="ctl-btn hidden items-center gap-2 lg:inline-flex"
+            style={user ? { background: 'var(--blue)', borderColor: 'var(--blue)', color: '#fff' } : undefined}
+          >
+            {user ? 'Admin' : 'Log in'}
+          </TLink>
+          <button className="mono text-xs uppercase tracking-[0.18em] lg:hidden" onClick={() => setOpen((v) => !v)} aria-expanded={open} aria-label="Menu">
+            {open ? 'Close' : 'Menu'}
+          </button>
+        </div>
       </nav>
 
       {open && (
-        <div className="mt-6 flex max-h-[80vh] flex-col gap-4 overflow-auto pb-4 md:hidden">
-          {LINKS.map((l) => (
+        <div className="mt-6 flex max-h-[80vh] flex-col gap-4 overflow-auto pb-4 lg:hidden">
+          {MOBILE.map((l) => (
             <TLink key={l.to} to={l.to} className="display text-2xl font-bold">
               {l.label}
             </TLink>
           ))}
+          <TLink to={user ? '/admin' : '/login'} className="display text-2xl font-bold" style={{ color: 'var(--blue-glow)' }}>
+            {user ? 'Admin dashboard →' : 'Log in →'}
+          </TLink>
         </div>
       )}
     </header>
@@ -126,8 +171,8 @@ export default function Navbar() {
 }
 
 function MegaItems({ kind }) {
-  const items = kind === 'robotics' ? MACHINES : LABS;
-  const base = kind === 'robotics' ? '/robotics/' : '/ai/';
+  const items = kind === 'robotics' ? MACHINES : kind === 'ai' ? LABS : MORE;
+  const base = kind === 'robotics' ? '/robotics/' : kind === 'ai' ? '/ai/' : '/';
   const ref = useRef(null);
   useGSAP(
     () => {

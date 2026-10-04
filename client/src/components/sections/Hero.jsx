@@ -5,18 +5,16 @@ import { gsap } from '../../lib/gsap';
 import { roverStore } from '../../lib/roverStore';
 import { scrollToSection } from '../../lib/lenis';
 import Button from '../ui/Button';
-
-const SUB = 'AI & Robotics Club · NIT Andhra Pradesh';
-const STATS = [
-  { v: 40, suffix: '+', label: 'members' },
-  { v: 12, suffix: '', label: 'projects' },
-  { v: 2027, suffix: '', label: 'IRC target' },
-];
+import { useContent } from '../../lib/content';
 
 export default function Hero({ ready }) {
   const root = useRef(null);
   const sub = useRef(null);
   const statRefs = useRef([]);
+  // headline, intro and the three numbers are edited in Admin → Page content → Home
+  const hero = useContent('hero');
+  const SUB = hero.sub || '';
+  const STATS = hero.stats || [];
 
   // H9 — pin the hero for one screen height; the rover turns + parks as you scroll
   useGSAP(
@@ -92,12 +90,12 @@ export default function Hero({ ready }) {
         const o = { v: 0 };
         const node = statRefs.current[i];
         const a = animate(o, {
-          v: s.v,
+          v: Number(s.v) || 0,
           duration: reduced ? 10 : 1500,
           ease: 'outExpo',
           modifier: utils.round(0),
           onUpdate: () => {
-            if (node) node.textContent = `${o.v}${s.suffix}`;
+            if (node) node.textContent = `${o.v}${s.suffix || ''}`;
           },
         });
         cleanups.push(() => a.cancel());
@@ -117,6 +115,7 @@ export default function Hero({ ready }) {
       tl.kill();
       cleanups.forEach((c) => c());
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready]);
 
   return (
@@ -133,18 +132,17 @@ export default function Hero({ ready }) {
         </div>
 
         <h1 className="display text-[clamp(2.4rem,5.6vw,5rem)] font-bold leading-[0.95]">
-          <span className="hl-line block overflow-hidden"><span className="block">BUILDING THE</span></span>
-          <span className="hl-line block overflow-hidden"><span className="block">MACHINES THAT</span></span>
+          <span className="hl-line block overflow-hidden"><span className="block">{hero.line1}</span></span>
+          <span className="hl-line block overflow-hidden"><span className="block">{hero.line2}</span></span>
           <span className="hl-line block overflow-hidden">
             <span className="block">
-              <span className="hl-accent" style={{ color: 'var(--blue)', opacity: 0, textShadow: '0 0 28px rgba(110,178,255,0.7)' }}>EXPLORE</span>
+              <span className="hl-accent" style={{ color: 'var(--blue)', opacity: 0, textShadow: '0 0 28px rgba(110,178,255,0.7)' }}>{hero.accent}</span>
             </span>
           </span>
         </h1>
 
         <p className="mt-5 max-w-[460px] text-base leading-relaxed" style={{ color: 'var(--muted)' }}>
-          Students at NIT Andhra Pradesh designing autonomous rovers, vision systems and
-          neuromorphic hardware — from first solder joint to competition field.
+          {hero.text}
         </p>
 
         <div className="hero-cta mt-7 flex flex-wrap gap-4">
@@ -157,7 +155,7 @@ export default function Hero({ ready }) {
 
       <div className="hero-stats mt-10 flex gap-10">
         {STATS.map((s, i) => (
-          <div key={s.label}>
+          <div key={i}>
             <div ref={(el) => (statRefs.current[i] = el)} className="display text-3xl font-bold" style={{ color: 'var(--fg)' }}>
               0
             </div>

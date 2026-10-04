@@ -3,7 +3,9 @@ import { useGSAP } from '@gsap/react';
 import { animate, stagger } from 'animejs';
 import { gsap } from '../../lib/gsap';
 import { useInView } from '../../hooks/useInView';
-import { upcoming, past } from '../../data/events';
+import { upcoming as staticUpcoming } from '../../data/events';
+import { OLD_EVENTS } from '../../data/oldSite';
+import { useEvents } from '../../lib/useData';
 import SectionHeading from '../ui/SectionHeading';
 
 const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
@@ -12,6 +14,11 @@ export default function Events() {
   const root = useRef(null);
   const list = useRef(null);
   const listIn = useInView(list, 0.2);
+  // Events now come from the database (Admin → Events); the static file is the first-paint fallback
+  const ev = useEvents(staticUpcoming);
+  const upcoming = ev.upcoming.slice(0, 4);
+  const past = ev.past.length ? ev.past.map((e) => ({ name: e.title, year: new Date(e.date).getFullYear() })) : OLD_EVENTS.map((e) => ({ name: e.title, year: new Date(e.starts_at).getFullYear() }));
+  const listKey = upcoming.map((e) => e.id || e.title).join('|');
 
   useGSAP(
     () => {
@@ -51,7 +58,7 @@ export default function Events() {
       wrap.addEventListener('mouseenter', () => gsap.to(loop, { timeScale: 0.25, duration: 0.6 }));
       wrap.addEventListener('mouseleave', () => gsap.to(loop, { timeScale: 1, duration: 0.6 }));
     },
-    { scope: root },
+    { scope: root, dependencies: [listKey], revertOnUpdate: true },
   );
 
   // E1 — flip-clock dates
@@ -65,7 +72,7 @@ export default function Events() {
       ease: 'outBack(1.4)',
     });
     return () => a.cancel();
-  }, [listIn]);
+  }, [listIn, listKey]);
 
   return (
     <section id="events" ref={root} className="section">
@@ -73,13 +80,19 @@ export default function Events() {
 
       <div className="grid gap-14 lg:grid-cols-[1.2fr_1fr]">
         <div>
-          <Countdown target={upcoming[0].date} title={upcoming[0].title} />
+          {upcoming[0] ? (
+            <Countdown target={upcoming[0].date} title={upcoming[0].title} />
+          ) : (
+            <div className="card p-6 text-sm" style={{ color: 'var(--muted)' }}>
+              No upcoming events right now — new dates are announced on the notice board.
+            </div>
+          )}
 
           <div ref={list} className="mt-10 flex flex-col">
             {upcoming.map((e) => {
               const d = new Date(e.date);
               return (
-                <a key={e.title} href="#contact" className="ev-row group relative flex items-center gap-6 py-6" data-cursor>
+ <a key={e.id || e.title} href="#calendar" className="ev-row group relative flex items-center gap-6 py-6" data-cursor>
                   <div
                     className="ev-date card flex h-16 w-16 shrink-0 flex-col items-center justify-center"
                     style={{ transformStyle: 'preserve-3d', perspective: 600 }}
@@ -90,7 +103,14 @@ export default function Events() {
                   <div className="min-w-0 flex-1">
                     <div className="mono text-[10px] tracking-[0.22em]" style={{ color: 'var(--blue-glow)' }}>{e.kind}</div>
                     <div className="display truncate text-xl font-bold">{e.title}</div>
-                    <div className="text-sm" style={{ color: 'var(--muted)' }}>{e.where}</div>
+                    <div className="text-sm" style={{ color: 'var(--muted)' }}>
+                      {e.where} · {d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                    </div>
+                    {e.registration_open !== undefined && (
+                      <div className="mono mt-1 text-[10px] tracking-[0.18em]" style={{ color: e.registration_open ? 'var(--ok)' : 'var(--muted)' }}>
+                        {e.registration_open ? `REGISTRATION OPEN${e.capacity ? ` · ${e.capacity} SEATS` : ''}` : 'REGISTRATION CLOSED'}
+                      </div>
+                    )}
                   </div>
                   <span className="ev-arrow -translate-x-3 text-2xl opacity-0" style={{ color: 'var(--blue)' }} aria-hidden="true">→</span>
                   <span className="ev-line absolute bottom-0 left-0 h-px w-full" style={{ background: 'var(--line)' }} />
@@ -106,8 +126,8 @@ export default function Events() {
           </div>
           <div className="marquee-wrap w-full overflow-hidden rounded-2xl" style={{ maskImage: 'linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent)' }}>
             <div className="marquee py-2">
-              {[...past, ...past].map((name, i) => (
-                <PastCard key={i} name={name} index={i % past.length} />
+              {[...past, ...past].map((p, i) => (
+                <PastCard key={i} name={p.name} year={p.year} index={i % past.length} />
               ))}
             </div>
           </div>
@@ -121,7 +141,7 @@ export default function Events() {
   );
 }
 
-function PastCard({ name, index }) {
+function PastCard({ name, year, index }) {
   const ref = useRef(null);
   return (
     <div
@@ -129,7 +149,7 @@ function PastCard({ name, index }) {
       className="card flex h-40 w-56 shrink-0 flex-col justify-end p-4 transition-transform duration-500 hover:-rotate-2 hover:scale-105"
       style={{ background: `linear-gradient(160deg, hsl(${205 + index * 6} 60% ${18 - index}% ), #050810)` }}
     >
-      <div className="mono text-[10px] tracking-[0.2em]" style={{ color: 'var(--blue-glow)' }}>2026</div>
+      <div className="mono text-[10px] tracking-[0.2em]" style={{ color: 'var(--blue-glow)' }}>{year}</div>
       <div className="display text-base font-bold">{name}</div>
     </div>
   );

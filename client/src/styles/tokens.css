@@ -8,6 +8,12 @@
   --blue-glow: #6eb2ff;
   --line: rgba(110, 178, 255, 0.18);
 
+  /* status colours (badges, priority dots) */
+  --ok: #3ddc97;
+  --warn: #ffb547;
+  --bad: #ff6b6b;
+  --glass: rgba(11, 16, 32, 0.55);
+
   --font-display: 'Space Grotesk', system-ui, sans-serif;
   --font-body: 'Inter', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;

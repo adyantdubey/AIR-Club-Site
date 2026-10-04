@@ -6,11 +6,15 @@
  *   VITE_FORM_MODE=api        (default) POST to our own Node server: /api/join, /api/register
  *   VITE_FORM_MODE=endpoint   POST to any form service (Web3Forms, Formspree, Google Apps Script)
  *   VITE_FORM_MODE=netlify    Netlify Forms — no server, no third-party service
+ *   VITE_FORM_MODE=database   nothing extra: the form is only saved in the Supabase database
+ *                             (it shows up in the Admin dashboard). This is the default as soon
+ *                             as Supabase is connected, so free static hosting needs no setup.
  *
- * The last two need NO backend at all, so the site can be hosted free as plain static files.
+ * The last three need NO Node server, so the site can be hosted free as plain static files.
  */
 
-const MODE = import.meta.env.VITE_FORM_MODE || 'api';
+const HAS_DB = !!(import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY);
+const MODE = import.meta.env.VITE_FORM_MODE || (HAS_DB ? 'database' : 'api');
 const ENDPOINT = import.meta.env.VITE_FORM_ENDPOINT || '';
 const ACCESS_KEY = import.meta.env.VITE_FORM_ACCESS_KEY || '';
 
@@ -23,6 +27,9 @@ export const isStatic = MODE !== 'api';
  * @returns {Promise<void>}          resolves on success, throws with a readable message
  */
 export async function submitForm(kind, data) {
+  // The pages save to the database themselves; this side has nothing to send, so it
+  // "fails" quietly and the database save alone decides whether the form succeeded.
+  if (MODE === 'database') throw new Error('Could not save — please try again');
   if (MODE === 'netlify') return submitNetlify(kind, data);
   if (MODE === 'endpoint') return submitEndpoint(kind, data);
   return submitApi(kind, data);

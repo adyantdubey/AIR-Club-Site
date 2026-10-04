@@ -26,13 +26,4 @@ export const upcoming = [
   },
 ];
 
-export const past = [
-  'Robo Soccer 2026',
-  'PCB Design Sprint',
-  'Vision Hackathon',
-  'Drone Day',
-  'Freshers Bootcamp',
-  'FPGA Study Jam',
-  'Tech Fest Expo',
-  'Arm Kinematics Talk',
-];
+// Past events are real and live in src/data/oldSite.js (OLD_EVENTS).

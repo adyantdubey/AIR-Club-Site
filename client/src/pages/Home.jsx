@@ -14,7 +14,11 @@ import { useCounter } from '../hooks/useCounter';
 import RoverScene from '../components/three/RoverScene';
 import Hero from '../components/sections/Hero';
 import Contact from '../components/sections/Contact';
-import { upcoming } from '../data/events';
+import { upcoming as staticUpcoming } from '../data/events';
+import { useEvents } from '../lib/useData';
+import { useContent } from '../lib/content';
+import Faq from '../components/sections/Faq';
+import { NoticeStrip, FeaturedProjects, AchievementsStrip, IdeaBoxCta } from '../components/sections/HomeExtras';
 
 export default function Home() {
   const ready = useReady();
@@ -30,7 +34,12 @@ export default function Home() {
       <Showroom />
       <AiPortal />
       <Numbers />
+      <NoticeStrip />
+      <FeaturedProjects />
+      <AchievementsStrip />
       <Latest />
+      <IdeaBoxCta />
+      <Faq />
       <Contact />
     </>
   );
@@ -269,6 +278,7 @@ const NUMS = [
 ];
 function Numbers() {
   const root = useRef(null);
+  const counters = useContent('counters'); // numbers + labels come from Admin → Page content → Home
   useGSAP(
     () => {
       ScrollTrigger.create({
@@ -286,8 +296,8 @@ function Numbers() {
   return (
     <section ref={root} className="section pb-0">
       <div className="grid gap-4 border-y py-10 sm:grid-cols-2 lg:grid-cols-4" style={{ borderColor: 'var(--line)' }}>
-        {NUMS.map((n) => (
-          <Num key={n.label} {...n} />
+        {counters.slice(0, 4).map((n, i) => (
+          <Num key={i} v={Number(n.v) || 0} suffix={n.suffix || ''} label={n.label} icon={NUMS[i % NUMS.length].icon} />
         ))}
       </div>
     </section>
@@ -322,8 +332,9 @@ function Latest() {
     },
     { scope: root },
   );
-  const ev = upcoming[0];
-  const d = new Date(ev.date);
+  const { upcoming } = useEvents(staticUpcoming);
+  const ev = upcoming[0] || { title: 'New dates soon', where: 'Watch the notice board', date: null };
+  const d = ev.date ? new Date(ev.date) : null;
   return (
     <section ref={root} className="section">
       <div className="grid gap-5 md:grid-cols-3">
@@ -333,7 +344,8 @@ function Latest() {
           </div>
           <div className="display mt-3 text-2xl font-bold">{ev.title}</div>
           <div className="mt-1 text-sm" style={{ color: 'var(--muted)' }}>
-            {d.toLocaleDateString('en-IN', { day: 'numeric', month: 'long' })} · {ev.where}
+            {d ? `${d.toLocaleDateString('en-IN', { day: 'numeric', month: 'long' })} · ` : ''}
+            {ev.where}
           </div>
           <div className="mt-6 text-sm" style={{ color: 'var(--blue-glow)' }}>
             All events <span className="inline-block transition-transform group-hover:translate-x-1">→</span>

@@ -3,33 +3,80 @@ import { useGSAP } from '@gsap/react';
 import { animate, stagger } from 'animejs';
 import { gsap, Flip } from '../lib/gsap';
 import { useInView } from '../hooks/useInView';
-import { upcoming as localUpcoming, past } from '../data/events';
+import { upcoming as localUpcoming } from '../data/events';
+import { useEvents, useTable } from '../lib/useData';
+import { insert } from '../lib/db';
+import { TLink } from '../transitions/PageWipe';
+import { Tile } from '../components/ui/MediaTile';
+import SafeImg from '../components/ui/SafeImg';
+import { fmtDate, fmtTime } from '../components/ui/kit';
 import EventsSection from '../components/sections/Events';
 import SectionHeading from '../components/ui/SectionHeading';
 import Breadcrumb from '../components/ui/Breadcrumb';
 import { Btn } from '../components/ui/Controls';
-import { submitForm, isStatic } from '../lib/forms';
+import { submitForm } from '../lib/forms';
 
 export default function Events() {
-  const [events, setEvents] = useState(localUpcoming);
-  useEffect(() => {
-    // The server can override the list (server/data/events.json) without a rebuild.
-    // Skipped when the site is hosted as static files with no Node server.
-    if (isStatic) return;
-    fetch('/api/events')
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => d?.events?.length && setEvents(d.events))
-      .catch(() => {});
-  }, []);
+  // Events are managed in Admin → Events (database). The static file is only the first-paint fallback.
+  const { upcoming, past, loading } = useEvents(localUpcoming);
   return (
     <>
       <div className="px-[var(--pad-x)] pt-28 md:pt-32">
         <Breadcrumb parts={['Events']} />
       </div>
       <EventsSection />
-      <Calendar events={events} />
+      <Calendar key={loading ? 'static' : 'live'} events={upcoming} />
+      <PastEvents events={past} />
       <PhotoWall />
     </>
+  );
+}
+
+/* ---------------- Past events: date, time, venue ---------------- */
+function PastEvents({ events }) {
+  const root = useRef(null);
+  useGSAP(
+    () => {
+      if (!events.length) return;
+      gsap.from('.past-row', { y: 24, opacity: 0, stagger: 0.06, duration: 0.6, scrollTrigger: { trigger: root.current, start: 'top 85%', once: true } });
+    },
+    { scope: root, dependencies: [events.length] },
+  );
+  if (!events.length) return null;
+  return (
+    <section ref={root} className="section pt-0">
+      <SectionHeading eyebrow="Archive">Already happened.</SectionHeading>
+      <div className="grid gap-3 md:grid-cols-2">
+        {events.slice(0, 12).map((e) => {
+          const Tag = e.id ? TLink : 'div';
+          return (
+            <Tag key={e.id || e.title} {...(e.id ? { to: `/events/${e.id}` } : {})} className="past-row glass group flex items-center gap-5 overflow-hidden p-4" data-cursor={e.id ? 'view' : undefined}>
+              <div className="relative flex h-16 w-16 shrink-0 flex-col items-center justify-center overflow-hidden rounded-xl" style={{ background: 'rgba(110,178,255,.06)' }}>
+                <SafeImg src={e.image_url} alt="" className="absolute inset-0 h-full w-full object-cover opacity-50 transition-opacity group-hover:opacity-80" />
+                <span className="display relative text-lg font-bold leading-none">{new Date(e.date).getDate()}</span>
+                <span className="mono relative text-[9px] tracking-[0.2em]" style={{ color: 'var(--fg)' }}>
+                  {fmtDate(e.date, { month: 'short', year: '2-digit' }).toUpperCase()}
+                </span>
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="mono text-[10px] tracking-[0.22em]" style={{ color: 'var(--blue-glow)' }}>
+                  {e.kind}
+                </div>
+                <div className="display truncate font-bold">{e.title}</div>
+                <div className="truncate text-xs" style={{ color: 'var(--muted)' }}>
+                  {e.where} · {fmtTime(e.date)}
+                </div>
+              </div>
+              {e.id && (
+                <span className="text-xl transition-transform group-hover:translate-x-1" style={{ color: 'var(--blue)' }} aria-hidden="true">
+                  →
+                </span>
+              )}
+            </Tag>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 
@@ -71,16 +118,17 @@ function Calendar({ events }) {
   const register = async (e) => {
     e.preventDefault();
     setReg('sending');
-    try {
-      await submitForm('register', { ...form, event: open.title });
-      setReg('done');
-    } catch {
-      setReg('error');
-    }
+    // Saved to the database (so Admin → Events can count it) AND sent to the email/form service.
+    // Either one succeeding counts as registered.
+    const results = await Promise.allSettled([
+      open.id ? insert('event_registrations', { event_id: open.id, name: form.name.trim(), email: form.email.trim() }, { returning: false }) : Promise.reject(new Error('no id')),
+      submitForm('register', { ...form, event: open.title }),
+    ]);
+    setReg(results.some((r) => r.status === 'fulfilled') ? 'done' : 'error');
   };
 
   return (
-    <section ref={root} className="section pt-0">
+    <section ref={root} id="calendar" className="section pt-0">
       <SectionHeading eyebrow="Calendar">Pick a day. Show up.</SectionHeading>
       <div className="grid gap-8 lg:grid-cols-[1.3fr_1fr]">
         <div className="card p-5">
@@ -137,7 +185,16 @@ function Calendar({ events }) {
               <div className="mt-1 text-sm" style={{ color: 'var(--muted)' }}>
                 {open.where} · {new Date(open.date).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
               </div>
-              {reg === 'done' ? (
+              {open.description && (
+                <p className="mt-3 text-sm" style={{ color: 'var(--muted)' }}>
+                  {open.description}
+                </p>
+              )}
+              {open.registration_open === false ? (
+                <div className="mono mt-6 text-xs tracking-[0.15em]" style={{ color: 'var(--muted)' }}>
+                  REGISTRATION IS CLOSED FOR THIS EVENT
+                </div>
+              ) : reg === 'done' ? (
                 <div className="mono mt-6 text-xs tracking-[0.15em]" style={{ color: 'var(--blue-glow)' }}>
                   REGISTERED — SEE YOU THERE
                 </div>
@@ -178,36 +235,38 @@ function PhotoWall() {
   const root = useRef(null);
   const grid = useRef(null);
   const inView = useInView(grid, 0.15);
+  const { rows } = useTable('media', { order: ['taken_on', false], limit: 12 });
+  const tiles = rows;
   useEffect(() => {
-    if (!inView) return;
+    if (!inView || !tiles.length) return;
     const a = animate('.photo', { opacity: [0, 1], scale: [0.9, 1], delay: stagger(60, { grid: [4, 3], from: 'center' }), duration: 700, ease: 'outExpo' });
     return () => a.cancel();
-  }, [inView]);
-  const tiles = past.concat(['Lab night', 'Rover test', 'Arm demo', 'Cage flight']).slice(0, 12);
+  }, [inView, tiles.length]);
   return (
     <section ref={root} className="section pt-0">
       <SectionHeading eyebrow="Photo wall">Moments from the floor.</SectionHeading>
       <div ref={grid} className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
         {tiles.map((t, i) => (
-          <div
-            key={t + i}
+          <TLink
+            to="/gallery"
+            key={t.id}
             className={`photo card group relative overflow-hidden opacity-0 ${i % 5 === 0 ? 'row-span-2' : ''}`}
-            style={{ minHeight: i % 5 === 0 ? 280 : 140, background: `linear-gradient(160deg, hsl(${210 + (i % 6) * 5} 55% ${16 + (i % 4) * 3}%), #050810)` }}
+            style={{ minHeight: i % 5 === 0 ? 280 : 140 }}
             data-cursor="view"
           >
-            <div className="absolute inset-0 transition-transform duration-700 group-hover:scale-110" style={{ background: 'radial-gradient(60% 60% at 40% 30%, rgba(110,178,255,.18), transparent)' }} />
-            <div className="absolute bottom-3 left-3">
+            <Tile m={t} i={i} />
+            <div className="absolute inset-x-0 bottom-0 p-3" style={{ background: 'linear-gradient(to top, rgba(5,8,16,.9), transparent)' }}>
               <div className="mono text-[9px] tracking-[0.25em]" style={{ color: 'var(--blue-glow)' }}>
-                2026
+                {String(t.taken_on || '').slice(0, 4)}
               </div>
-              <div className="display text-sm font-bold">{t}</div>
+              <div className="display text-sm font-bold">{t.title}</div>
             </div>
-          </div>
+          </TLink>
         ))}
       </div>
-      <p className="mono mt-4 text-[10px] tracking-[0.2em]" style={{ color: 'var(--muted)' }}>
-        DROP REAL PHOTOS INTO client/public/photos AND LIST THEM IN src/data/events.js
-      </p>
+      <TLink to="/gallery" className="mono mt-5 inline-block text-[11px] tracking-[0.2em]" style={{ color: 'var(--blue-glow)' }}>
+        OPEN THE FULL GALLERY →
+      </TLink>
     </section>
   );
 }

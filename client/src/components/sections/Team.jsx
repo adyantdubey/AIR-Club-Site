@@ -2,8 +2,10 @@ import { useEffect, useRef, useState } from 'react';
 import { animate, stagger, svg } from 'animejs';
 import { gsap, Flip } from '../../lib/gsap';
 import { useInView } from '../../hooks/useInView';
-import { leads, members, filters } from '../../data/team';
+import { leads as staticLeads, members as staticMembers, filters } from '../../data/team';
+import { useTable } from '../../lib/useData';
 import SectionHeading from '../ui/SectionHeading';
+import SafeImg from '../ui/SafeImg';
 
 const initials = (name) =>
   name
@@ -18,12 +20,17 @@ export default function Team() {
   const grid = useRef(null);
   const [filter, setFilter] = useState('all');
   const gridIn = useInView(grid, 0.15);
-  const revealed = useRef(false);
 
-  // T1 — cards ripple in from the centre of the grid
+  // Team comes from the database (Admin → Team); the static file is shown until it loads
+  const { rows, loading } = useTable('team_members', { order: ['sort_order', true] });
+  const people = loading && !rows.length ? null : rows.filter((m) => m.group !== 'faculty');
+  const leads = people ? people.filter((m) => m.is_lead) : staticLeads;
+  const members = people ? people.filter((m) => !m.is_lead) : staticMembers;
+  const memberKey = members.map((m) => m.id || m.name).join('|');
+
+  // T1 — cards ripple in from the centre of the grid (again if the list changes)
   useEffect(() => {
-    if (!gridIn || revealed.current) return;
-    revealed.current = true;
+    if (!gridIn || !members.length) return;
     const cards = grid.current.querySelectorAll('.member');
     const cols = getComputedStyle(grid.current).gridTemplateColumns.split(' ').length;
     const rows = Math.ceil(cards.length / cols);
@@ -36,7 +43,7 @@ export default function Team() {
       ease: 'outExpo',
     });
     return () => a.cancel();
-  }, [gridIn]);
+  }, [gridIn, memberKey]);
 
   // T4 — re-flow the grid with GSAP Flip when a filter is picked
   const pick = (key) => {
@@ -64,7 +71,7 @@ export default function Team() {
       {/* T3 — leads */}
       <div className="mb-14 grid gap-5 sm:grid-cols-3">
         {leads.map((l) => (
-          <MemberCard key={l.name} m={l} lead />
+          <MemberCard key={l.id || l.name} m={l} lead />
         ))}
       </div>
 
@@ -87,7 +94,7 @@ export default function Team() {
 
       <div ref={grid} className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
         {members.map((m) => (
-          <MemberCard key={m.name} m={m} hidden={filter !== 'all' && m.group !== filter} />
+          <MemberCard key={m.id || m.name} m={m} hidden={filter !== 'all' && m.group !== filter} />
         ))}
       </div>
     </section>
@@ -145,37 +152,49 @@ function MemberCard({ m, lead = false, hidden = false }) {
 
       {/* T2 — duotone photo, full colour on hover */}
       <div className={`relative overflow-hidden rounded-xl ${lead ? 'aspect-[4/3]' : 'aspect-square'}`}>
-        {m.photo ? (
-          <img src={m.photo} alt={m.name} className="duotone h-full w-full object-cover" loading="lazy" />
-        ) : (
-          <div
-            className="duotone flex h-full w-full items-center justify-center"
-            style={{ background: 'linear-gradient(135deg, #2a4f9e, #0b1020)' }}
-          >
-            <span className="display text-3xl font-bold" style={{ color: 'var(--blue-glow)' }}>
-              {initials(m.name)}
-            </span>
-          </div>
-        )}
+        <SafeImg
+          src={m.photo || m.photo_url}
+          alt={m.name}
+          className="duotone h-full w-full object-cover object-top"
+          fallback={
+            <div className="duotone flex h-full w-full items-center justify-center" style={{ background: 'linear-gradient(135deg, #2a4f9e, #0b1020)' }}>
+              <span className="display text-3xl font-bold" style={{ color: 'var(--blue-glow)' }}>
+                {initials(m.name)}
+              </span>
+            </div>
+          }
+        />
         <div
           className="absolute inset-x-0 bottom-0 translate-y-full p-3 transition-transform duration-500 group-hover:translate-y-0"
           style={{ background: 'linear-gradient(to top, rgba(5,8,16,.95), transparent)', transitionTimingFunction: 'var(--ease-out)' }}
         >
           <div className="display text-sm font-bold">{m.name}</div>
           <div className="mono text-[10px] tracking-[0.2em]" style={{ color: 'var(--blue-glow)' }}>{m.role.toUpperCase()}</div>
+          {m.bio && (
+            <p className="mt-1 line-clamp-3 text-[11px] leading-snug" style={{ color: 'var(--muted)' }}>
+              {m.bio}
+            </p>
+          )}
         </div>
       </div>
 
-      <div className="mt-3 flex items-center justify-between">
-        <div>
-          <div className="display text-sm font-bold">{m.name}</div>
+      <div className="mt-3 flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <div className="display text-sm font-bold leading-snug">{m.name}</div>
           <div className="text-xs" style={{ color: 'var(--muted)' }}>{m.role}</div>
+          {(m.department || m.year) && (
+            <div className="mono mt-0.5 text-[9px] tracking-[0.15em]" style={{ color: 'var(--blue-glow)' }}>
+              {[m.department, m.year].filter(Boolean).join(' · ').toUpperCase()}
+            </div>
+          )}
         </div>
-        <svg ref={icons} className="h-4 w-10" viewBox="0 0 40 16" fill="none" aria-hidden="true">
-          <rect x="1" y="1" width="14" height="14" rx="3" stroke="var(--blue-glow)" strokeWidth="1.3" />
-          <circle cx="8" cy="8" r="3" stroke="var(--blue-glow)" strokeWidth="1.3" />
-          <path d="M24 14V6M24 3v.5M29 14V9a2.5 2.5 0 0 1 5 0v5" stroke="var(--blue-glow)" strokeWidth="1.3" strokeLinecap="round" />
-        </svg>
+{/^https:\/\/(www\.)?linkedin\.com\/in\//.test(m.linkedin || '') && (
+          <a href={m.linkedin} target="_blank" rel="noreferrer" aria-label={`${m.name} on LinkedIn`} className="shrink-0 rounded-md p-1 transition-colors hover:bg-[rgba(45,123,255,.15)]" onClick={(e) => e.stopPropagation()}>
+            <svg ref={icons} className="h-4 w-5" viewBox="20 0 18 16" fill="none" aria-hidden="true">
+              <path d="M24 14V6M24 3v.5M29 14V9a2.5 2.5 0 0 1 5 0v5" stroke="var(--blue-glow)" strokeWidth="1.3" strokeLinecap="round" />
+            </svg>
+          </a>
+        )}
       </div>
     </div>
   );

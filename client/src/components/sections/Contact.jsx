@@ -6,6 +6,9 @@ import { roverStore } from '../../lib/roverStore';
 import SectionHeading from '../ui/SectionHeading';
 import Button from '../ui/Button';
 import { submitForm } from '../../lib/forms';
+import { insert } from '../../lib/db';
+import { useSettings } from '../../lib/useData';
+import { CLUB } from '../../data/oldSite';
 
 const EMPTY = { name: '', email: '', branch: '', message: '', team: '' };
 const TEAMS = ['Rover', 'Robotic arm', 'Drones & UAV', 'Hexabot', 'AI Lab', 'Web & outreach'];
@@ -16,6 +19,8 @@ export default function Contact({ showTeams = false }) {
   const [form, setForm] = useState(EMPTY);
   const [status, setStatus] = useState('idle'); // idle | sending | done | error
   const [error, setError] = useState('');
+  const settings = useSettings();
+  const email = settings.email || CLUB.email;
 
   // C1 — rover drives in from the right when the section appears
   useGSAP(
@@ -49,7 +54,14 @@ export default function Contact({ showTeams = false }) {
     animate(btn, { width: 52, height: 52, paddingLeft: 0, paddingRight: 0, duration: 450, ease: 'inOutQuad' });
 
     try {
-      await submitForm('join', form);
+      if (!form.name.trim() || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(form.email.trim())) throw new Error('Add your name and a valid email');
+      // Saved to the database (Admin dashboard inbox) AND sent to the email/form service.
+      // Either one working is enough.
+      const results = await Promise.allSettled([
+        insert('contact_messages', { name: form.name.trim(), email: form.email.trim(), branch: form.branch, team: form.team, message: form.message, status: 'new' }, { returning: false }),
+        submitForm('join', form),
+      ]);
+      if (!results.some((r) => r.status === 'fulfilled')) throw results[1].reason || new Error('Could not send — please try again');
       await new Promise((r) => setTimeout(r, 500));
       setStatus('done');
       roverStore.antennaBlink = 1;
@@ -72,11 +84,37 @@ export default function Contact({ showTeams = false }) {
             soldering irons. Fill in the form and a lead will get back within two days.
           </p>
           <div className="mono mt-10 flex flex-col gap-3 text-xs tracking-[0.15em]" style={{ color: 'var(--muted)' }}>
-            <div>ROBOTICS LAB · NIT ANDHRA PRADESH · TADEPALLIGUDEM</div>
-            <a href="mailto:airclub@nitandhra.ac.in" className="hover:text-white" style={{ color: 'var(--blue-glow)' }}>
-              AIRCLUB@NITANDHRA.AC.IN
+            <div>{(settings.address || CLUB.address).toUpperCase()}</div>
+            <a href={`mailto:${email}`} className="hover:text-white" style={{ color: 'var(--blue-glow)' }}>
+              {email.toUpperCase()}
+            </a>
+            <a href={`tel:${(settings.phone || CLUB.phone).replace(/\s/g, '')}`} className="hover:text-white">
+              {settings.phone || CLUB.phone}
             </a>
           </div>
+          {showTeams && settings.office_hours && (
+            <div className="glass mt-8 max-w-[440px] p-5">
+              <div className="mono text-[10px] tracking-[0.22em]" style={{ color: 'var(--blue-glow)' }}>
+                OFFICE HOURS · DROP BY THE LAB
+              </div>
+              <div className="mt-3 flex flex-col gap-1.5">
+                {settings.office_hours.split('\n').filter(Boolean).map((line) => {
+                  const [day, ...rest] = line.split('·');
+                  return (
+                    <div key={line} className="flex justify-between gap-4 text-sm">
+                      <span>{day.trim()}</span>
+                      <span style={{ color: 'var(--muted)' }}>{rest.join('·').trim()}</span>
+                    </div>
+                  );
+                })}
+              </div>
+              {settings.recruitment_open !== undefined && (
+                <div className="mono mt-4 text-[10px] tracking-[0.2em]" style={{ color: settings.recruitment_open ? 'var(--ok)' : 'var(--muted)' }}>
+                  {settings.recruitment_open ? '● RECRUITMENT OPEN' : '○ RECRUITMENT CLOSED FOR NOW'}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         <form className="c-form flex flex-col gap-2" onSubmit={submit} noValidate>

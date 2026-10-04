@@ -5,12 +5,32 @@ import { roverStore } from '../../lib/roverStore';
 import { TLink } from '../../transitions/PageWipe';
 import FlipLink from '../ui/FlipLink';
 import Logo from '../ui/Logo';
+import { useSettings } from '../../lib/useData';
 
 const WORD = 'AI & ROBOTICS';
 
+const SOCIAL_ICON = {
+  instagram: 'M4 4h16v16H4zM12 8.5a3.5 3.5 0 1 0 0 7a3.5 3.5 0 1 0 0-7M17 7v.01',
+  github: 'M9 19c-4 1.5-4-2-6-2.5M15 21v-3.5c0-1 .1-1.4-.5-2 2.8-.3 5.5-1.4 5.5-6a4.6 4.6 0 0 0-1.3-3.2 4.2 4.2 0 0 0-.1-3.2s-1.1-.3-3.5 1.3a12 12 0 0 0-6.2 0C6.5 2.8 5.4 3.1 5.4 3.1a4.2 4.2 0 0 0-.1 3.2A4.6 4.6 0 0 0 4 9.5c0 4.6 2.7 5.7 5.5 6-.6.6-.6 1.2-.5 2V21',
+  linkedin: 'M4 9h4v11H4zM6 4v.01M11 20v-6a3 3 0 0 1 6 0v6M11 9v11M17 14v6h3v-6.5a4 4 0 0 0-6-3.5',
+  youtube: 'M3 7.5C3 6 4 5 5.5 5h13C20 5 21 6 21 7.5v9c0 1.5-1 2.5-2.5 2.5h-13C4 19 3 18 3 16.5zM10 9l5 3-5 3z',
+};
+
 // C4 — huge outlined letters rise one by one, then drift sideways with scroll. C5 — flip links.
+const PAGES = [
+  ['robotics', 'robotics'], ['ai', 'ai lab'], ['projects', 'projects'], ['events', 'events'], ['ideas', 'idea box'],
+  ['announcements', 'notices'], ['learn', 'learn'], ['gallery', 'gallery'], ['about', 'about'], ['team', 'team'], ['contact', 'contact'],
+];
+
 export default function Footer() {
   const root = useRef(null);
+  const settings = useSettings();
+  const socials = [
+    ['instagram', settings.instagram],
+    ['github', settings.github],
+    ['linkedin', settings.linkedin],
+    ['youtube', settings.youtube],
+  ].filter(([, url]) => url);
 
   useGSAP(
     () => {
@@ -50,19 +70,36 @@ export default function Footer() {
             <div className="mono text-[10px] tracking-[0.2em]" style={{ color: 'var(--muted)' }}>NIT ANDHRA PRADESH</div>
           </div>
         </div>
-        <nav className="flex flex-wrap gap-x-8 gap-y-3">
-          {[['robotics', 'robotics'], ['ai', 'ai lab'], ['about', 'about'], ['events', 'events'], ['team', 'team'], ['contact', 'contact']].map(([id, label]) => (
+        <nav className="flex flex-wrap gap-x-8 gap-y-3 md:max-w-[640px] md:justify-end">
+          {PAGES.map(([id, label]) => (
             <FlipLink key={id} as={TLink} to={`/${id}`} className="mono text-xs uppercase tracking-[0.18em]">
               {label}
             </FlipLink>
           ))}
-          <FlipLink href="https://instagram.com" target="_blank" rel="noreferrer" className="mono text-xs uppercase tracking-[0.18em]">
-            instagram
-          </FlipLink>
-          <FlipLink href="https://github.com" target="_blank" rel="noreferrer" className="mono text-xs uppercase tracking-[0.18em]">
-            github
-          </FlipLink>
         </nav>
+      </div>
+
+      <div className="mt-8 flex flex-wrap items-center gap-3">
+        {socials.map(([name, url]) => (
+          <a
+            key={name}
+            href={url}
+            target="_blank"
+            rel="noreferrer"
+            aria-label={name}
+            className="flex h-10 w-10 items-center justify-center rounded-full border transition-colors hover:bg-[rgba(45,123,255,.15)]"
+            style={{ borderColor: 'var(--line)' }}
+          >
+            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d={SOCIAL_ICON[name]} stroke="var(--blue-glow)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </a>
+        ))}
+        {settings.email && (
+          <a href={`mailto:${settings.email}`} className="mono ml-1 text-[11px] tracking-[0.15em]" style={{ color: 'var(--blue-glow)' }}>
+            {settings.email.toUpperCase()}
+          </a>
+        )}
       </div>
 
       <div className="big-word mt-12 flex select-none overflow-hidden whitespace-nowrap" aria-hidden="true">

@@ -3,6 +3,7 @@ import { roverStore } from '../lib/roverStore';
 import RoverScene from '../components/three/RoverScene';
 import ContactSection from '../components/sections/Contact';
 import Breadcrumb from '../components/ui/Breadcrumb';
+import Faq from '../components/sections/Faq';
 
 export default function Contact() {
   useEffect(() => {
@@ -16,6 +17,7 @@ export default function Contact() {
         <Breadcrumb parts={['Contact']} />
       </div>
       <ContactSection showTeams />
+      <Faq contactLink={false} />
     </>
   );
 }
